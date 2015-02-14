@@ -13,6 +13,27 @@ library("doParallel")
 # strict = TRUE
 # n = 10
 
+
+DownloadWeatherData <- function(year, ...)
+{
+  # defines the path in the NOAA servers where the weather data is
+  path.to.file <- "ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/by_year/"
+  
+  # name of the file
+  # in the NOAA servers, each file ends with extension '.csv.gz'
+  file.name <- paste(year, '.csv.gz', sep="")
+  
+  print (paste(path.to.file, file.name, sep=""))
+  
+  # download the file containing weather data for an
+  # specific year from the NOAA's servers
+  download.file(url= paste(path.to.file, file.name, sep=""), 
+                destfile=file.name, 
+                method='auto')
+  
+}
+
+
 nearest.stations <- GetNearestStations(lat=48.043333, lon=-74.140556, start.year=1995, end.year=2014, 
                    stations.from=c("US", "CA"), data=c("TMAX", "TMIN", "PRCP"),
                    path.to.ghcnd.inventory = '/home/thalles/Desktop/R Weather Testing Code/ghcnd-inventory.txt')
@@ -70,17 +91,18 @@ GetNearestStations <- function( lat, lon, start.year, end.year = start.year, dat
   # the interval of years in which each stations has data available
   stations <- read.table(path.to.ghcnd.inventory, 
                          header = FALSE,
-                         col.names=c("StationID", "lat", "lon", "Info", "StartYear", "EndYear"))
+                         col.names=c("stationID", "lat", "lon", "feature", "startYear", "endYear"),
+                         colClasses=c("factor", "numeric", "numeric", "factor", "integer", "integer"))
   
   # select only the weather stations which fall in the starting and ending 
   # year specified 
-  stations <- subset(stations, start.year >= StartYear & end.year <= EndYear)
+  stations <- subset(stations, start.year >= startYear & end.year <= endYear)
   
   # subset the data based on weather station locations
   if (!is.null(stations.from))
   {
     # get the first to letters from the weather station ID
-    s <- substr(stations$StationID, 1, 2)
+    s <- substr(stations$stationID, 1, 2)
     
     # get only the stations specified in the argument 
     stations <- stations[s %in% stations.from, ]
@@ -89,7 +111,7 @@ GetNearestStations <- function( lat, lon, start.year, end.year = start.year, dat
   # subset the data based on which information needs to be retrieved 
   if (!is.null(data))
   {
-    stations <- stations[stations$Info %in% data, ]
+    stations <- stations[stations$feature %in% data, ]
   } else 
   {
     # because no features were requested, strict is meaningless
@@ -117,7 +139,7 @@ GetNearestStations <- function( lat, lon, start.year, end.year = start.year, dat
   stations <- stations[order(distance.km), ]
   
   count = 0
-  closest.stations <- list()
+  closest.stations <- data.frame()
   
   if (isTRUE(strict))
   {
@@ -128,7 +150,7 @@ GetNearestStations <- function( lat, lon, start.year, end.year = start.year, dat
       # check if all stations have the features defined by the [data] parameter
       if (identical(nrow(sta), length(data)))
       {
-        closest.stations <- append(closest.stations, list(sta))
+        closest.stations <- rbind(closest.stations, sta[1,])
         count = count + 1  
       }
       
@@ -139,13 +161,74 @@ GetNearestStations <- function( lat, lon, start.year, end.year = start.year, dat
   } else {
     for (sta in split(stations, stations$distance.km))
     {
-      closest.stations <- append(closest.stations, list(sta))
+      closest.stations <- rbind(closest.stations, sta[1,])
       count = count + 1  
       
       if (identical(count, n))
         break  
     }
   }
-  closest.stations
+  l <- list( years = c(start.year, end.year), data = data, starting.point = point,
+             closest.stations = list(closest.stations[c("stationID", "lat", "lon", "distance.km")]))
+    
+}
+
+
+
+
+
+GetWeatherData <- function(nearest.stations, path.to.weather.data=NULL)
+{
+  # get actual weathe data from the NOAA's servers
+  # the input list for this function has to be the list ouput 
+  # by function getNearestStations
+  
+  # get only the station ID records
+  stations.id <- droplevels(as.data.frame(nearest.stations[[4]])$stationID)
+  
+  # get only the desired information, which is the kind of data a user
+  # is looking for, e.g. TMAX, TMIN, TPRCP....
+  data <-nearest.stations$data
+  
+  # get the year interval
+  from.to.year <- nearest.stations$years
+  
+  # if path.to.weather.data is NULL, download the data from NOAA's servers
+  if (is.null(path.to.weather.data)){
+    path.to.weather.data <- DownloadWeatherData <- function(from.to.year)
+  }
+  
+  path.to.weather.data <- '/home/thalles/Desktop/R\\ Weather\\ Testing\\ Code/2000/2000.csv'
+  
+  # get the file's number of lines to make the read.csv funcion more efficient
+  lines <- system(paste("wc -l", path.to.weather.data, sep=" "), intern = T)
+  
+  # regular expression to extract only the number from the output
+  m <- regexpr("[1-9]*", lines, perl=TRUE) 
+  lines <- as.numeric(regmatches(lines, m))
+  
+  # read the file containing the weather data
+  df <- read.csv("/home/thalles/Desktop/R Weather Testing Code/2000/2000.csv",
+                 header=F,
+                 col.names=c("stationID", "date", "feature", "value", "NULL", "NULL", "degree", "NULL"),
+                 colClasses=c("character", "factor", "character", "integer", "NULL", "NULL", "character", "NULL"),
+                 nrows = lines, comment.char = "")
+  
+  
+  # get only the desired stations
+  df <- df[df$stationID %in% stations.id, ]
+  
+  # filter only for the requested data 
+  df <- df[df$feature %in% data, ]
+  
+  # divides the data into chunks of weather stations
+  weather.stations.list <- split(df, df$stationID )
+  
+  # get info of the one stations with data regarding a whole year
+  station1 <- l[[1]]
+  
+  stations <- stations[order(distance.km), ]
   
 }
+
+
