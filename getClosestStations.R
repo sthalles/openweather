@@ -3,16 +3,16 @@ library("plyr")
 library("doParallel")
 
 # experimental point
-# lat <- 48.043333
-# lon <- -74.140556
-# start.year <- 1995
-# end.year <- 2014
-# path.to.ghcnd.inventory = '/home/thalles/Desktop/R Weather Testing Code/ghcnd-inventory.txt'
-# stations.from <- c("US", "CA")
-# data <- c("TMAX", "TMIN", "PRCP")
-# strict = TRUE
-# n = 10
-
+lat <- 48.043333
+lon <- -74.140556
+start.year <- 1995
+end.year <- 2014
+path.to.ghcnd.inventory = NULL
+stations.from <- c("US", "CA")
+data <- c("TMAX", "TMIN", "PRCP")
+strict = TRUE
+n = 10
+working.dir <- getwd()
 
 DownloadWeatherData <- function(year, ...)
 {
@@ -34,13 +34,13 @@ DownloadWeatherData <- function(year, ...)
 }
 
 
-nearest.stations <- GetNearestStations(lat=48.043333, lon=-74.140556, start.year=1995, end.year=2014, 
-                   stations.from=c("US", "CA"), data=c("TMAX", "TMIN", "PRCP"),
-                   path.to.ghcnd.inventory = '/home/thalles/Desktop/R Weather Testing Code/ghcnd-inventory.txt')
+nearest.stations <- GetNearestStations(lat=48.043333, lon=-74.140556, start.year=1980, end.year=1980, 
+                   stations.from=c("US"),
+                   working.dir = '/Users/thalles/Desktop/openweather')
 
 GetNearestStations <- function( lat, lon, start.year, end.year = start.year, data = NULL,
-                                path.to.ghcnd.inventory = 'ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/ghcnd-inventory.txt',
-                                stations.from = NULL, strict = TRUE, n = 10 )
+                                path.to.ghcnd.inventory = NULL,
+                                working.dir = getwd(), stations.from = NULL, strict = TRUE, n = 10 )
 {
   # Given a coordinate point, it computes the closest weather station to that point
   # based on information provided by NOOA website at ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/
@@ -58,13 +58,25 @@ GetNearestStations <- function( lat, lon, start.year, end.year = start.year, dat
   #   data: vector containing the specific weather information to be retrieved
   #          possible values consiste of TMIN, TMAX, PCPT. e.g. c("TMAX", "TMIN")
   #
-  #   path.to.ghcnd.inventory: string: in case a user wants to use the file locally
-  #                            locally stored, the path to the file is defined here.
+  #   path.to.ghcnd.inventory: string: If a user supplies the right path to the 
+  #                            file called ghcnd-inventory.txt, then it will be 
+  #                            read normally, however, if the file path is incorrect,
+  #                            or not specified, then an attempt to find the file in
+  #                            the current working directory will be made, if no 
+  #                            success, the file will be downloaded 
+  #                            from the NOAA's servers before a reading attempt.
+  #                            In case of downloading, the file will be located 
+  #                            in the directory defined working.dir.
   #                            By default it fetches information from:
   #                            ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/ghcnd-inventory.txt.
   #                            For better performance, it is recommended to download
   #                            the file 'ghcnd-inventory' from the website above
   #                            and locally read it specifying its path.
+  #
+  #   working.dir: string: path to where the ghcnd-inventory.txt file will be 
+  #                        stored. If any path is defined it will be placed in
+  #                        the current working directory. Note, if path.to.ghcnd.inventory 
+  #                        defined, this argument becomes meaningless. 
   #
   #   stations.from: vector: defines from which countries a user wants to retrieve 
   #                          weather information from. A value such c("CA", "US"),
@@ -84,6 +96,33 @@ GetNearestStations <- function( lat, lon, start.year, end.year = start.year, dat
   #
   #   n: numeric: defines the number of closest stations to be output
   
+  # if the argument path.to.ghcnd.inventory is not defined
+  if (is.null(path.to.ghcnd.inventory))
+  {
+    # file targeted
+    ghcnd.inventory <- "ghcnd-inventory.txt"
+    
+    # search for "ghcnd-inventory.txt" in the current working directory
+    # get all files with .txt extenssion from the working directory
+    file.names <- Sys.glob(file.path(working.dir, "*.txt"))
+    
+    # define the future or current path of the file ghcnd.inventory.txt
+    path.to.ghcnd.inventory <- file.path(working.dir, ghcnd.inventory)
+    
+    if (!(ghcnd.inventory %in% file.names))
+    {
+      # download the file from NOAA's servers      
+      download.file(url= "ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/ghcnd-inventory.txt", 
+                    destfile = path.to.ghcnd.inventory,  
+                    method = 'auto')
+    }
+  } else {
+    # in case of a defining path 
+    # check the path for correctness 
+    if (!file.exists(path.to.ghcnd.inventory))
+      stop("The function could not find the file 'ghcnd.inventory'. Recheck the path.to.ghcnd.inventory argument.")
+  }
+  
   # create a point (longitude first)
   point <- c(lon, lat)
   
@@ -97,6 +136,13 @@ GetNearestStations <- function( lat, lon, start.year, end.year = start.year, dat
   # select only the weather stations which fall in the starting and ending 
   # year specified 
   stations <- subset(stations, start.year >= startYear & end.year <= endYear)
+  
+  # if stations data frame is empty, there is no data available for these
+  # arguments settings
+  if (nrow(stations) == 0)
+  {
+    stop("No data available for therse arguments settings.")
+  }
   
   # subset the data based on weather station locations
   if (!is.null(stations.from))
@@ -177,7 +223,7 @@ GetNearestStations <- function( lat, lon, start.year, end.year = start.year, dat
 
 
 
-GetWeatherData <- function(nearest.stations, path.to.weather.data=NULL)
+GetWeatherData <- function(nearest.stations, working.dir=getwd())
 {
   # get actual weathe data from the NOAA's servers
   # the input list for this function has to be the list ouput 
@@ -190,12 +236,35 @@ GetWeatherData <- function(nearest.stations, path.to.weather.data=NULL)
   # is looking for, e.g. TMAX, TMIN, TPRCP....
   data <-nearest.stations$data
   
-  # get the year interval
+  # get the year interval defined
   from.to.year <- nearest.stations$years
   
-  # if path.to.weather.data is NULL, download the data from NOAA's servers
-  if (is.null(path.to.weather.data)){
-    path.to.weather.data <- DownloadWeatherData <- function(from.to.year)
+  path.to.weather.data <- c()
+  
+  # for each year in the interval previously defined, first search for the 
+  # specific weather data file in the working directory, if it is not found,
+  # then, download it from the NOAA's servers
+  for (year in seq(from.to.year[1], from.to.year[2], by=1))
+  {
+    year <- 1970
+  
+    targeted.file <- paste0(year, ".csv.gz")
+
+    # search in the current workig directory for all files with .csv extenssion
+    file.names <- Sys.glob(file.path(working.dir, "*.csv.gz"))
+    
+    # define the current or future path for the file YYYY.csv.gz
+    path <- file.path(working.dir, targeted.file)
+    
+    # verify if the file is in the directory
+    if (!(targeted.file %in% file.names))
+    {
+      # if the file is not found, download it
+      download.file(url= paste0("ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/by_year/", targeted.file), 
+                    destfile = path,
+                    method='auto')
+    }
+    path.to.weather.data <- append(path.to.weather.data, path)
   }
   
   path.to.weather.data <- '/home/thalles/Desktop/R\\ Weather\\ Testing\\ Code/2000/2000.csv'
