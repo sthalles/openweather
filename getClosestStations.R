@@ -5,14 +5,14 @@ library("doParallel")
 # experimental point
 lat <- 48.043333
 lon <- -74.140556
-start.year <- 1995
-end.year <- 2014
+start.year <- 1910
+end.year <- 1910
 path.to.ghcnd.inventory = NULL
-stations.from <- c("US", "CA")
-data <- c("TMAX", "TMIN", "PRCP")
+stations.from <- c("US")
+data <- NULL
 strict = TRUE
 n = 10
-working.dir <- getwd()
+working.dir <- '/Users/thalles/Desktop/openweather'
 
 DownloadWeatherData <- function(year, ...)
 {
@@ -34,9 +34,10 @@ DownloadWeatherData <- function(year, ...)
 }
 
 
-nearest.stations <- GetNearestStations(lat=48.043333, lon=-74.140556, start.year=1980, end.year=1980, 
-                   stations.from=c("US"),
+nearest.stations <- GetNearestStations(lat=48.043333, lon=-74.140556, start.year=2000, end.year=2000,
+                   path.to.ghcnd.inventory = "/Users/thalles/Desktop/openweather/ghcnd-inventory.txt",
                    working.dir = '/Users/thalles/Desktop/openweather')
+
 
 GetNearestStations <- function( lat, lon, start.year, end.year = start.year, data = NULL,
                                 path.to.ghcnd.inventory = NULL,
@@ -58,13 +59,14 @@ GetNearestStations <- function( lat, lon, start.year, end.year = start.year, dat
   #   data: vector containing the specific weather information to be retrieved
   #          possible values consiste of TMIN, TMAX, PCPT. e.g. c("TMAX", "TMIN")
   #
-  #   path.to.ghcnd.inventory: string: If a user supplies the right path to the 
+  #   path.to.ghcnd.inventory: string: Path to the ghcnd-inventory.txt file.
+  #                            If a user supplies the right path to the 
   #                            file called ghcnd-inventory.txt, then it will be 
   #                            read normally, however, if the file path is incorrect,
   #                            or not specified, then an attempt to find the file in
   #                            the current working directory will be made, if no 
   #                            success, the file will be downloaded 
-  #                            from the NOAA's servers before a reading attempt.
+  #                            from the NOAA's servers before the reading attempt.
   #                            In case of downloading, the file will be located 
   #                            in the directory defined working.dir.
   #                            By default it fetches information from:
@@ -108,8 +110,8 @@ GetNearestStations <- function( lat, lon, start.year, end.year = start.year, dat
     
     # define the future or current path of the file ghcnd.inventory.txt
     path.to.ghcnd.inventory <- file.path(working.dir, ghcnd.inventory)
-    
-    if (!(ghcnd.inventory %in% file.names))
+        
+    if (!(ghcnd.inventory %in% basename(file.names)))
     {
       # download the file from NOAA's servers      
       download.file(url= "ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/ghcnd-inventory.txt", 
@@ -119,6 +121,7 @@ GetNearestStations <- function( lat, lon, start.year, end.year = start.year, dat
   } else {
     # in case of a defining path 
     # check the path for correctness 
+    
     if (!file.exists(path.to.ghcnd.inventory))
       stop("The function could not find the file 'ghcnd.inventory'. Recheck the path.to.ghcnd.inventory argument.")
   }
@@ -141,7 +144,7 @@ GetNearestStations <- function( lat, lon, start.year, end.year = start.year, dat
   # arguments settings
   if (nrow(stations) == 0)
   {
-    stop("No data available for therse arguments settings.")
+    stop("No data available for these arguments settings.")
   }
   
   # subset the data based on weather station locations
@@ -152,12 +155,23 @@ GetNearestStations <- function( lat, lon, start.year, end.year = start.year, dat
     
     # get only the stations specified in the argument 
     stations <- stations[s %in% stations.from, ]
+    
+    if (nrow(stations) == 0)
+    {
+      stop("No data available for the location(s) required.")
+    }
   }
   
   # subset the data based on which information needs to be retrieved 
   if (!is.null(data))
   {
     stations <- stations[stations$feature %in% data, ]
+    
+    if (nrow(stations) == 0)
+    {
+      stop("No data available for these/this kind of data.")
+    }
+    
   } else 
   {
     # because no features were requested, strict is meaningless
@@ -215,7 +229,7 @@ GetNearestStations <- function( lat, lon, start.year, end.year = start.year, dat
     }
   }
   l <- list( years = c(start.year, end.year), data = data, starting.point = point,
-             closest.stations = list(closest.stations[c("stationID", "lat", "lon", "distance.km")]))
+             closest.stations = list(closest.stations[c("stationID", "lat", "lon", "startYear", "endYear", "distance.km")]))
     
 }
 
@@ -225,9 +239,9 @@ GetNearestStations <- function( lat, lon, start.year, end.year = start.year, dat
 
 GetWeatherData <- function(nearest.stations, working.dir=getwd())
 {
-  # get actual weathe data from the NOAA's servers
-  # the input list for this function has to be the list ouput 
-  # by function getNearestStations
+  # get actual weather data from the NOAA's servers
+  # the input list for this function has to be the list output 
+  # by function GetNearestStations
   
   # get only the station ID records
   stations.id <- droplevels(as.data.frame(nearest.stations[[4]])$stationID)
@@ -245,10 +259,8 @@ GetWeatherData <- function(nearest.stations, working.dir=getwd())
   # specific weather data file in the working directory, if it is not found,
   # then, download it from the NOAA's servers
   for (year in seq(from.to.year[1], from.to.year[2], by=1))
-  {
-    year <- 1970
-  
-    targeted.file <- paste0(year, ".csv.gz")
+  {  
+    targeted.file <- paste0(year, ".csv")
 
     # search in the current workig directory for all files with .csv extenssion
     file.names <- Sys.glob(file.path(working.dir, "*.csv.gz"))
@@ -257,27 +269,32 @@ GetWeatherData <- function(nearest.stations, working.dir=getwd())
     path <- file.path(working.dir, targeted.file)
     
     # verify if the file is in the directory
-    if (!(targeted.file %in% file.names))
+    if (!(targeted.file %in% basename(file.names)))
     {
+      Sys.setenv(ftp_proxy_user="Guest", ftp_proxy_password="")
+      
       # if the file is not found, download it
       download.file(url= paste0("ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/by_year/", targeted.file), 
                     destfile = path,
-                    method='auto')
+                    method='auto', mode = 'r')
     }
     path.to.weather.data <- append(path.to.weather.data, path)
   }
-  
-  path.to.weather.data <- '/home/thalles/Desktop/R\\ Weather\\ Testing\\ Code/2000/2000.csv'
+   
+  # function to remove leading and trailling whitespace
+  trim <- function( x ) {
+    gsub("(^[[:space:]]+|[[:space:]]+$)", "", x)
+  }
   
   # get the file's number of lines to make the read.csv funcion more efficient
-  lines <- system(paste("wc -l", path.to.weather.data, sep=" "), intern = T)
+  lines <- trim(system(paste("wc -l", path.to.weather.data, sep=" "), intern = T))
   
   # regular expression to extract only the number from the output
-  m <- regexpr("[1-9]*", lines, perl=TRUE) 
+  m <- regexpr("[0-9]*", lines, perl=TRUE) 
   lines <- as.numeric(regmatches(lines, m))
   
   # read the file containing the weather data
-  df <- read.csv("/home/thalles/Desktop/R Weather Testing Code/2000/2000.csv",
+  df <- read.csv(path.to.weather.data,
                  header=F,
                  col.names=c("stationID", "date", "feature", "value", "NULL", "NULL", "degree", "NULL"),
                  colClasses=c("character", "factor", "character", "integer", "NULL", "NULL", "character", "NULL"),
@@ -287,8 +304,10 @@ GetWeatherData <- function(nearest.stations, working.dir=getwd())
   # get only the desired stations
   df <- df[df$stationID %in% stations.id, ]
   
-  # filter only for the requested data 
-  df <- df[df$feature %in% data, ]
+  if (!is.null(data)){
+    # filter only for the requested data 
+    df <- df[df$feature %in% data, ]
+  }
   
   # divides the data into chunks of weather stations
   weather.stations.list <- split(df, df$stationID )
@@ -300,4 +319,16 @@ GetWeatherData <- function(nearest.stations, working.dir=getwd())
   
 }
 
+
+a <- list(name = "Ann", age = 9)
+b <- list(name = "Bobby", age = 17)
+c <- list(name = "Alex", age = 6)
+
+L <- list(a,b,c)
+ages <- sapply(L,"[[","age")
+names <- sapply(L,"[[","name")
+names[order(ages)]
+
+
+order.list(L)
 
