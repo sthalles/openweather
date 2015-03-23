@@ -26,7 +26,7 @@
 out <- GetNearestStationData(nearest.stations, element=c("TMAX", "TMIN"))
 
 
-GetNearestStationData <- function( nearest.stations, element = NULL, working.dir = getwd() ) {
+GetNearestStationData <- function(nearest.stations, element = NULL, working.dir = getwd()) {
   # get the data frame with the weather stations information
   df <- as.data.frame(nearest.stations$closest.stations)
 
@@ -236,7 +236,7 @@ tmax <- GetMaxTemperature(out[[1]])
 tmin <- GetMinTemperature(out[[1]])
 
 
-GetMaxTemperature <- function (weather.data) {
+GetMaxTemperature <- function(weather.data) {
   # Given a data frame containing the weather data from one specific station,
   # this function returns a data frame with only the Max temperature data element.
   # Function originally designed to work with the output from GetNearestStationData, 
@@ -246,10 +246,10 @@ GetMaxTemperature <- function (weather.data) {
   # subset the data frame to get only the TMAX data element
   weather.data <- weather.data[weather.data$ELEMENT %in% c('TMAX'), ]
   
-  # creates a string vector containing the column names to the MONTH and 
+  # creates a string vector containing the column names of the ID, MONTH and 
   # daily TEMPERATURES.
-  # The [days] variable will hold strings like "MONTH", "DAY1", "DAY2", ... "DAY31"
-  days <- c('MONTH')
+  # The [days] variable will hold strings like "ID", "MONTH", "DAY1", "DAY2", ... "DAY31"
+  days <- c('ID', 'MONTH')
   for( day in 1:31){
     days <- c(days, paste('DAY', day, sep=''))
   }
@@ -268,8 +268,8 @@ GetMinTemperature <- function(weather.data) {
   
   # creates a string vector containing the column names to the MONTH and 
   # daily TEMPERATURES.
-  # The [days] variable will hold strings like "MONTH", "DAY1", "DAY2", ... "DAY31"
-  days <- c('MONTH')
+  # The [days] variable will hold strings like "ID", "MONTH", "DAY1", "DAY2", ... "DAY31"
+  days <- c('ID', 'MONTH')
   for( day in 1:31){
     days <- c(days, paste('DAY', day, sep=''))
   }
