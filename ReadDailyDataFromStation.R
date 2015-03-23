@@ -23,10 +23,10 @@
 # }
 
 
-out <- getNearestStationData(nearest.stations, element=c("TMAX", "TMIN"))
+out <- GetNearestStationData(nearest.stations, element=c("TMAX", "TMIN"))
 
 
-getNearestStationData <- function( nearest.stations, element = NULL, working.dir = getwd() ) {
+GetNearestStationData <- function( nearest.stations, element = NULL, working.dir = getwd() ) {
   # get the data frame with the weather stations information
   df <- as.data.frame(nearest.stations$closest.stations)
 
@@ -229,29 +229,51 @@ getNearestStationData <- function( nearest.stations, element = NULL, working.dir
   output
 }
 
+########################################################################
+########################################################################
 
-data2014 <- as.data.frame(out[1])
+tmax <- GetMaxTemperature(out[[1]])
+tmin <- GetMinTemperature(out[[1]])
 
-##################################
-# get only TMAX
-data2014TMAX <- data2014[data2014$ELEMENT %in% c('TMAX'), ]
 
-# get the only the columns realated to TMAX
-days <- c('MONTH')
-for( day in 1:31){
-  days <- c(days, paste('DAY', day, sep=''))
+GetMaxTemperature <- function (weather.data) {
+  # Given a data frame containing the weather data from one specific station,
+  # this function returns a data frame with only the Max temperature data element.
+  # Function originally designed to work with the output from GetNearestStationData, 
+  # which once outputs a list with data frame, only the data frame must be passed 
+  # rather than the whole list.
+  
+  # subset the data frame to get only the TMAX data element
+  weather.data <- weather.data[weather.data$ELEMENT %in% c('TMAX'), ]
+  
+  # creates a string vector containing the column names to the MONTH and 
+  # daily TEMPERATURES.
+  # The [days] variable will hold strings like "MONTH", "DAY1", "DAY2", ... "DAY31"
+  days <- c('MONTH')
+  for( day in 1:31){
+    days <- c(days, paste('DAY', day, sep=''))
+  }
+  
+  # subset to get only the temperature and months columns
+  weather.data <- weather.data[days]
 }
 
-data2014TMAX <- data2014TMAX[days]
 
-##################################
-# get only TIN
-data2014TMIN <- data2014[data2014$ELEMENT %in% c('TMIN'), ]
-
-# get the only the columns realated to TMAX
-days <- c('MONTH')
-for( day in 1:31){
-  days <- c(days, paste('DAY', day, sep=''))
+GetMinTemperature <- function(weather.data) {
+  # GetMinTemperature function works in the same way as GetMaxTemperature does.
+  # but outputting only the MIN temperature
+  
+  # subset the data frame to get only the TMIN data element
+  weather.data <- weather.data[weather.data$ELEMENT %in% c('TMIN'), ]
+  
+  # creates a string vector containing the column names to the MONTH and 
+  # daily TEMPERATURES.
+  # The [days] variable will hold strings like "MONTH", "DAY1", "DAY2", ... "DAY31"
+  days <- c('MONTH')
+  for( day in 1:31){
+    days <- c(days, paste('DAY', day, sep=''))
+  }
+  
+  # subset to get only the temperature and months columns
+  weather.data <- weather.data[days]
 }
-
-data2014TMIN <- data2014TMIN[days]
