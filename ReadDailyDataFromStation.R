@@ -232,11 +232,11 @@ GetNearestStationData <- function(nearest.stations, element = NULL, working.dir 
 ########################################################################
 ########################################################################
 
-tmax <- GetMaxTemperature(out[[1]])
+tmax <- GetMAXTemperature(out[[1]])
 tmin <- GetMinTemperature(out[[1]])
 
 
-GetMaxTemperature <- function(weather.data) {
+GetMAXTemperature <- function(weather.data) {
   # Given a data frame containing the weather data from one specific station,
   # this function returns a data frame with only the Max temperature data element.
   # Function originally designed to work with the output from GetNearestStationData, 
@@ -259,7 +259,7 @@ GetMaxTemperature <- function(weather.data) {
 }
 
 
-GetMinTemperature <- function(weather.data) {
+GetMINTemperature <- function(weather.data) {
   # GetMinTemperature function works in the same way as GetMaxTemperature does.
   # but outputting only the MIN temperature
   
