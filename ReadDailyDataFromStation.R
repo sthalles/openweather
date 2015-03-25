@@ -47,7 +47,11 @@ GetNearestStationData <- function(nearest.stations, element = NULL, working.dir 
     # Secondly, get the start and end year desired
     start.year <- nearest.stations$years[1]
     end.year <- nearest.stations$years[2]
-  
+    
+    # get the lat and long coordinates of each station
+    lat <- station$lat
+    lon <- station$lon
+    
     # read the schema. It is provided in the readme.txt
     # in the ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/ directory
     Schema <- read.table(text = "
@@ -221,9 +225,14 @@ GetNearestStationData <- function(nearest.stations, element = NULL, working.dir 
       }
     }
     
+    # add the staion's coordinate to the data frame
+    daily.data <- cbind(daily.data, lat)
+    daily.data <- cbind(daily.data, lon)
+    
     # add the weather data to the output list
     output <- append(output, list(daily.data))
   }
+  
   
   # returns the weather data for each weather station
   output
@@ -235,6 +244,12 @@ GetNearestStationData <- function(nearest.stations, element = NULL, working.dir 
 tmax <- GetMAXTemperature(out[[1]])
 tmin <- GetMinTemperature(out[[1]])
 
+data1 <- data.frame()
+
+for(i in out) {
+  row <- GetMAXTemperature(i[1, ])
+  data1 <- rbind(data1, row)
+}
 
 GetMAXTemperature <- function(weather.data) {
   # Given a data frame containing the weather data from one specific station,
@@ -248,8 +263,8 @@ GetMAXTemperature <- function(weather.data) {
   
   # creates a string vector containing the column names of the ID, MONTH and 
   # daily TEMPERATURES.
-  # The [days] variable will hold strings like "ID", "MONTH", "DAY1", "DAY2", ... "DAY31"
-  days <- c('ID', 'MONTH')
+  # The [days] variable will hold strings like "ID", "lat", "lon", "MONTH", "DAY1", "DAY2", ... "DAY31"
+  days <- c('ID', "lat", "lon", 'MONTH')
   for( day in 1:31){
     days <- c(days, paste('DAY', day, sep=''))
   }
