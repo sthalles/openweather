@@ -26,6 +26,7 @@ GetNearestStationData <- function(nearest.stations, element = NULL, working.dir 
     # get the lat and long coordinates of each station
     LAT <- station$lat
     LON <- station$lon
+
     
     # read the schema. It is provided in the readme.txt
     # in the ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/ directory
@@ -247,6 +248,7 @@ GetMAXTemperature <- function(weather.data) {
   # daily TEMPERATURES.
   # The [days] variable will hold strings like "ID", "lat", "lon", "MONTH", "DAY1", "DAY2", ... "DAY31"
   days <- c('ID', "LAT", "LON", 'MONTH')
+
   for( day in 1:31){
     days <- c(days, paste('DAY', day, sep=''))
   }
