@@ -26,8 +26,10 @@ GetNearestStationData <- function(nearest.stations, element = NULL, working.dir 
     # get the lat and long coordinates of each station
     LAT <- station$lat
     LON <- station$lon
-
     
+    # get the distance
+    DIST <- station$distance.km
+
     # read the schema. It is provided in the readme.txt
     # in the ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/ directory
     Schema <- read.table(text = "
@@ -205,6 +207,9 @@ GetNearestStationData <- function(nearest.stations, element = NULL, working.dir 
     daily.data <- cbind(daily.data, LAT)
     daily.data <- cbind(daily.data, LON)
     
+    # add the distance 
+    daily.data <- cbind(daily.data, DIST)
+    
     # add the weather data to the output list
     output <- append(output, list(daily.data))
   }
@@ -224,6 +229,10 @@ data.max <- data.frame()
 
 for(i in out) {
   row <- GetMAXTemperature(i)
+  
+  # get only data from the month of January
+  row <- subset(row, MONTH==1)
+  
   data.max <- rbind(data.max, row[1, ])
 }
 
@@ -231,7 +240,11 @@ data.min <- data.frame()
 
 for(i in out) {
   row <- GetMINTemperature(i)
-  data.min <- rbind(data.min, row[1,])
+  
+  # get only data from the month of January
+  row <- subset(row, MONTH==1)
+  
+  data.min <- rbind(data.min, row)
 }
 
 GetMAXTemperature <- function(weather.data) {
@@ -242,19 +255,19 @@ GetMAXTemperature <- function(weather.data) {
   # rather than the whole list.
   
   # subset the data frame to get only the TMAX data element
-  weather.data <- weather.data[weather.data$ELEMENT %in% c('TMAX'), ]
+  tmax <- weather.data[weather.data$ELEMENT %in% c('TMAX'), ]
   
   # creates a string vector containing the column names of the ID, MONTH and 
   # daily TEMPERATURES.
   # The [days] variable will hold strings like "ID", "lat", "lon", "MONTH", "DAY1", "DAY2", ... "DAY31"
-  days <- c('ID', "LAT", "LON", 'MONTH')
+  days <- c('ID', "LAT", "LON", 'DIST', 'MONTH')
 
   for( day in 1:31){
     days <- c(days, paste('DAY', day, sep=''))
   }
   
   # subset to get only the temperature and months columns
-  weather.data <- weather.data[days]
+  tmax <- tmax[days]
 }
 
 
@@ -263,16 +276,16 @@ GetMINTemperature <- function(weather.data) {
   # but outputting only the MIN temperature
     
   # subset the data frame to get only the TMIN data element
-  weather.data <- weather.data[weather.data$ELEMENT %in% c('TMIN'), ]
+  tmin <- weather.data[weather.data$ELEMENT %in% c('TMIN'), ]
   
   # creates a string vector containing the column names to the MONTH and 
   # daily TEMPERATURES.
   # The [days] variable will hold strings like 'ID', "LAT", "LON", 'MONTH', "DAY1", "DAY2", ... "DAY31"
-  days <- c('ID', "LAT", "LON", 'MONTH')
+  days <- c('ID', "LAT", "LON", 'DIST', 'MONTH')
   for( day in 1:31){
     days <- c(days, paste('DAY', day, sep=''))
   }
   
   # subset to get only the temperature and months columns
-  weather.data <- weather.data[days]
+  tmin <- tmin[days]
 }
