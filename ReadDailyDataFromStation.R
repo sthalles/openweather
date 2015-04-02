@@ -1,7 +1,20 @@
-out <- GetNearestStationData(nearest.stations, element=c("TMAX", "TMIN"))
+# TESTING CALL
+# out <- GetNearestStationData(nearest.stations, element=c("TMAX", "TMIN"))
 
 
 GetNearestStationData <- function(nearest.stations, element = NULL, working.dir = getwd()) {
+  # This function is responsible for getting the actual weather data from the 
+  # individual station weather files with extension ".dly" at ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/all/
+  # Args:
+  #   nearest.stations, list objetct returned by the function GetNearestStations.
+  #
+  #   element: string vector containing the desired elements. Some of them are: TMAX, TMIN.
+  #
+  #   working.dir: string containing a full path to the ".dly" weather files. In
+  #                case of non existence of such files in this directory, this
+  #                function will download the needed files and store them in this 
+  #                directory.
+  
   # get the data frame with the weather stations information
   df <- as.data.frame(nearest.stations$closest.stations)
   
@@ -222,30 +235,28 @@ GetNearestStationData <- function(nearest.stations, element = NULL, working.dir 
 ########################################################################
 ########################################################################
 
-tmax <- GetMAXTemperature(out[[1]])
-tmin <- GetMINTemperature(out[[3]])
 
-data.max <- data.frame()
-
-for(i in out) {
-  row <- GetMAXTemperature(i)
-  
-  # get only data from the month of January
-  row <- subset(row, MONTH==1)
-  
-  data.max <- rbind(data.max, row[1, ])
-}
-
-data.min <- data.frame()
-
-for(i in out) {
-  row <- GetMINTemperature(i)
-  
-  # get only data from the month of January
-  row <- subset(row, MONTH==1)
-  
-  data.min <- rbind(data.min, row)
-}
+# data.max <- data.frame()
+# 
+# for(i in out) {
+#   row <- GetMAXTemperature(i)
+#   
+#   # get only data from the month of January
+#   row <- subset(row, MONTH==1)
+#   
+#   data.max <- rbind(data.max, row[1, ])
+# }
+# 
+# data.min <- data.frame()
+# 
+# for(i in out) {
+#   row <- GetMINTemperature(i)
+#   
+#   # get only data from the month of January
+#   row <- subset(row, MONTH==1)
+#   
+#   data.min <- rbind(data.min, row)
+# }
 
 GetMAXTemperature <- function(weather.data) {
   # Given a data frame containing the weather data from one specific station,

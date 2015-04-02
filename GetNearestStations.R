@@ -1,23 +1,25 @@
 library(sp)
 
-nearest.stations <- GetNearestStations(lat=48.043333, lon=-74.140556, start.year=2000, end.year=2000,
-                                       path.to.ghcnd.inventory = "/Users/thalles/Desktop/openweather/ghcnd-inventory.txt",
-                                       working.dir = '/Users/thalles/Desktop/openweather')
-
+# TESTING CALL
+# nearest.stations <- GetNearestStations(lat=46.043333, lon=-72.140556, start.year=2000, end.year=2000,
+#                                        path.to.ghcnd.inventory = "/Users/thalles/Desktop/openweather/ghcnd-inventory.txt",
+#                                        working.dir = '/Users/thalles/Desktop/openweather', n=20)
+# 
 
 GetNearestStations <- function( lat, lon, start.year, end.year = start.year, data = NULL,
                                 path.to.ghcnd.inventory = NULL,
                                 working.dir = getwd(), stations.from = NULL, strict = TRUE, n = 10 )
 {
-  # Given a coordinate point, it computes the closest weather station to that point
-  # based on information provided by NOOA website at ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/
+  # Given a coordinate point, it finds and returns the closest weather station to that point
+  # based on information provided by NOOA website at 
+  # ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/ghcnd-inventory.txt file.
   #
   # Args:
-  #   lat: latitude coordinate in decimal degrees form. e.g. 48.043486
+  #   lat: latitude coordinate in decimal degrees form. e.g. 48.043486.
   #
-  #   lon: lontirude coodinate in decimal defrees form. e.g. -74.140737
+  #   lon: lontirude coodinate in decimal defrees form. e.g. -74.140737.
   #
-  #   start.year: numeric: year in which the weather information will be captured
+  #   start.year: numeric: year in which the weather information will be captured.
   #
   #   end.year: numeric: in case of a range of years, this represents the upper limit,
   #              if not defined, its default value is [start.year]
@@ -25,26 +27,9 @@ GetNearestStations <- function( lat, lon, start.year, end.year = start.year, dat
   #   data: vector containing the specific weather information to be retrieved
   #          possible values consiste of TMIN, TMAX, PCPT. e.g. c("TMAX", "TMIN")
   #
-  #   path.to.ghcnd.inventory: string: Path to the ghcnd-inventory.txt file.
-  #                            If a user supplies the right path to the 
-  #                            file called ghcnd-inventory.txt, then it will be 
-  #                            read normally, however, if the file path is incorrect,
-  #                            or not specified, then an attempt to find the file in
-  #                            the current working directory will be made, if no 
-  #                            success, the file will be downloaded 
-  #                            from the NOAA's servers before the reading attempt.
-  #                            In case of downloading, the file will be located 
-  #                            in the directory defined working.dir.
-  #                            By default it fetches information from:
-  #                            ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/ghcnd-inventory.txt.
-  #                            For better performance, it is recommended to download
-  #                            the file 'ghcnd-inventory' from the website above
-  #                            and locally read it specifying its path.
-  #
-  #   working.dir: string: path to where the ghcnd-inventory.txt file will be 
-  #                        stored. If any path is defined it will be placed in
-  #                        the current working directory. Note, if path.to.ghcnd.inventory 
-  #                        defined, this argument becomes meaningless. 
+  #   working.dir: string with the full path to the ghcnd-inventory.txt file. 
+  #                If this file is not in this directory, an attempt to download
+  #                the file (in this directory) will be made before reading.
   #
   #   stations.from: vector: defines from which countries a user wants to retrieve 
   #                          weather information from. A value such c("CA", "US"),
@@ -64,32 +49,16 @@ GetNearestStations <- function( lat, lon, start.year, end.year = start.year, dat
   #
   #   n: numeric: defines the number of closest stations to be output
   
-  # if the argument path.to.ghcnd.inventory is not defined
-  if (is.null(path.to.ghcnd.inventory))
-  {
-    # file targeted
-    ghcnd.inventory <- "ghcnd-inventory.txt"
-    
-    # search for "ghcnd-inventory.txt" in the current working directory
-    # get all files with .txt extenssion from the working directory
-    file.names <- Sys.glob(file.path(working.dir, "*.txt"))
-    
-    # define the future or current path of the file ghcnd.inventory.txt
-    path.to.ghcnd.inventory <- file.path(working.dir, ghcnd.inventory)
-    
-    if (!(ghcnd.inventory %in% basename(file.names)))
-    {
-      # download the file from NOAA's servers      
-      download.file(url= "ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/ghcnd-inventory.txt", 
-                    destfile = path.to.ghcnd.inventory,  
-                    method = 'auto')
-    }
-  } else {
-    # in case of a defining path 
-    # check the path for correctness 
-    
-    if (!file.exists(path.to.ghcnd.inventory))
-      stop("The function could not find the file 'ghcnd.inventory'. Recheck the path.to.ghcnd.inventory argument.")
+  # check if the file ghcnd-inventory.txt exists in the working dir
+  # if the file does NOT exist, try to download it before reading
+  
+  ghcnd.inventory <- "ghcnd-inventory.txt"
+  
+  if (!file.exists(file.path(working.dir, ghcnd.inventory))) {
+    # download the file from NOAA's servers      
+    download.file(url= "ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/ghcnd-inventory.txt", 
+                  destfile = file.path(working.dir, ghcnd.inventory),  
+                  method = 'auto')
   }
   
   # create a point (longitude first)
@@ -108,38 +77,32 @@ GetNearestStations <- function( lat, lon, start.year, end.year = start.year, dat
   
   # if stations data frame is empty, there is no data available for these
   # arguments settings
-  if (nrow(stations) == 0)
-  {
+  if (nrow(stations) == 0) {
     stop("No data available for these arguments settings.")
   }
   
   # subset the data based on weather station locations
-  if (!is.null(stations.from))
-  {
+  if (!is.null(stations.from)) {
     # get the first to letters from the weather station ID
     s <- substr(stations$stationID, 1, 2)
     
     # get only the stations specified in the argument 
     stations <- stations[s %in% stations.from, ]
     
-    if (nrow(stations) == 0)
-    {
+    if (nrow(stations) == 0) {
       stop("No data available for the location(s) required.")
     }
   }
   
   # subset the data based on which information needs to be retrieved 
-  if (!is.null(data))
-  {
+  if (!is.null(data)) {
     stations <- stations[stations$feature %in% data, ]
     
-    if (nrow(stations) == 0)
-    {
+    if (nrow(stations) == 0) {
       stop("No data available for these/this kind of data.")
     }
     
-  } else 
-  {
+  } else {
     # because no features were requested, strict is meaningless
     strict = FALSE
   }
@@ -167,15 +130,12 @@ GetNearestStations <- function( lat, lon, start.year, end.year = start.year, dat
   count = 0
   closest.stations <- data.frame()
   
-  if (isTRUE(strict))
-  {
+  if (isTRUE(strict)) {
     # get the closest wheather stations from the point defined by [lat] and [lon] in which
     # each one of the stations do have the features defined by the parameter [data]
-    for(sta in split(stations, stations$distance.km) )
-    {
+    for(sta in split(stations, stations$distance.km) ) {
       # check if all stations have the features defined by the [data] parameter
-      if (identical(nrow(sta), length(data)))
-      {
+      if (identical(nrow(sta), length(data))) {
         closest.stations <- rbind(closest.stations, sta[1,])
         count = count + 1  
       }
@@ -185,8 +145,7 @@ GetNearestStations <- function( lat, lon, start.year, end.year = start.year, dat
     }
     closest.stations
   } else {
-    for (sta in split(stations, stations$distance.km))
-    {
+    for (sta in split(stations, stations$distance.km)) {
       closest.stations <- rbind(closest.stations, sta[1,])
       count = count + 1  
       
