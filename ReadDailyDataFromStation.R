@@ -173,7 +173,7 @@ GetWeatherDataByStation <- function(station.id, summary = FALSE, working.dir = g
 }
 
 
-GetNearestStationData <- function(nearest.stations, element = NULL, working.dir = getwd()) {
+GetNearestStationData <- function(nearest.stations, element = NULL, working.dir = getwd(), summary = FALSE) {
   # This function is responsible for getting the actual weather data from the 
   # individual station weather files with extension ".dly" at ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/all/
   # Args:
@@ -215,7 +215,7 @@ GetNearestStationData <- function(nearest.stations, element = NULL, working.dir 
     DIST <- station$distance.km
 
     # get weather data for each station
-    daily.data <- GetWeatherDataByStation(station.id, working.dir)
+    daily.data <- GetWeatherDataByStation(station.id=station.id, working.dir=working.dir, summary=summary)
     
     # subset only the data for the specified year
     daily.data <- subset(daily.data, YEAR >= start.year & YEAR <= end.year)
@@ -224,7 +224,7 @@ GetNearestStationData <- function(nearest.stations, element = NULL, working.dir 
     # for the year(s) defined, so skip this loop iteration
     # in other words, discard this station
     if (nrow(daily.data) == 0) {
-      warning(paste("There is no data for the station: ", station.id, sep=""))
+      warning(paste("There is no data for the year of: ", start.year, "in the station: ", station.id, sep=""))
       next 
     }
     
